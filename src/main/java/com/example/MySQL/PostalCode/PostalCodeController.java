@@ -10,6 +10,8 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -84,6 +86,40 @@ public class PostalCodeController {
         return "TotalSize" + sum;
     }
 
+    @RequestMapping("/timezoneConversion")
+    public String timezoneConversion()
+    {
+
+        String format=generateTimeZoneOffset("America/New_York");
+        return ""+ UtcToCgTimeZoneConversion("America/New_York","2023-02-15 04:25:21",true);
+    }
+    public String UtcToCgTimeZoneConversion(String zone, String date, boolean sigDateFormat) {
+
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMM,dd yyyy HH:mm a")
+                .withZone(ZoneId.of(zone));
+        Instant instant;
+        if (date.equalsIgnoreCase("now()")) {
+            formatter = DateTimeFormatter.ofPattern("MMM,dd yyyy HH:mm:ss a")
+                    .withZone(ZoneId.of(zone));
+            instant = Instant.now();
+        } else if (sigDateFormat) {
+            formatter = DateTimeFormatter.ofPattern("MMM,dd yyyy")
+                    .withZone(ZoneId.of(zone));
+            instant = Timestamp.valueOf(date).toInstant();
+        } else {
+            instant = Timestamp.valueOf(date).toInstant();
+        }
+        String formattedInstant = formatter.format(instant);
+        return formattedInstant;
+    }
+
+    private String generateTimeZoneOffset(String zoneOffset) {
+        String offset = ZoneId.of(zoneOffset).getDisplayName(TextStyle.SHORT_STANDALONE, Locale.ENGLISH);
+        DateTimeFormatter zoneAbbreviationFormatter
+                = DateTimeFormatter.ofPattern("zzz", Locale.ENGLISH);
+        String offsetLabel=  ZonedDateTime.now(ZoneId.of(zoneOffset)).format(zoneAbbreviationFormatter);
+        return offsetLabel;
+    }
     @RequestMapping("/questTcare5")
     public String timezone() {
 
@@ -227,4 +263,5 @@ public class PostalCodeController {
             System.out.println("exception occurred" + e);
         }
     }
+
 }
