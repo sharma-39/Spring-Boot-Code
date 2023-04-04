@@ -1,7 +1,12 @@
 package com.example.MySQL.PostalCode;
 
+
+
+
+import okhttp3.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -9,9 +14,14 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.sql.SQLException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -19,9 +29,13 @@ import java.time.format.TextStyle;
 import java.util.*;
 import java.util.stream.Collectors;
 
+
+
 @RestController
 public class PostalCodeController {
 
+    public static final String ACCOUNT_SID = System.getenv("TWILIO_ACCOUNT_SID");
+    public static final String AUTH_TOKEN = System.getenv("TWILIO_AUTH_TOKEN");
     @Autowired
     JdbcTemplate jdbcTemplate;
 
@@ -87,11 +101,54 @@ public class PostalCodeController {
     }
 
     @RequestMapping("/timezoneConversion")
-    public String timezoneConversion()
-    {
+    public String timezoneConversion() throws IOException {
 
+
+
+
+            // Find your Account SID and Auth Token at twilio.com/console
+            // and set the environment variables. See http://twil.io/secure
+
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(new URI("https://graph.facebook.com/v13.0/107634205625641/messages"))
+                    .header("Authorization", "Bearer EAAIWg4W2rjQBAHRbt6EWplA9K8GqLAYmk9b9eAS3FkZAZCKiitQhUyU8YKFMySFOp1ex4crEzj8MZBElg5bgdfGpBOUQOaFXvZBunrNwNF4oXspEZBrOgkKgDZBzO0siohgGJ6oOZBN4bv03VBuZCYLyJorN5FgjXWUofHAntlsEVeYMATaiA3sKjPeDlfMBdgCfkiKVq2qfYwZDZD")
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString("{ \"messaging_product\": \"whatsapp\", \"recipient_type\": \"individual\", \"to\": \"919791310502\", \"type\": \"template\", \"template\": { \"name\": \"Hi Sharma Murugaiyan\", \"language\": { \"code\": \"en_US\" } } }"))
+                    .build();
+            HttpClient http = HttpClient.newHttpClient();
+            HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+            System.out.println(response.body());
+
+        } catch (URISyntaxException | IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        OkHttpClient client = new OkHttpClient();
+        okhttp3.RequestBody body =  new FormBody.Builder()
+                .add("token", "o7d415viacyz5q6q")
+                .add("to", "9791310502")
+                .add("body", "WhatsApp API on UltraMsg.com works good")
+                .build();
+
+        Request request = new Request.Builder()
+                .url("https://api.ultramsg.com/instance41905/messages/chat")
+                .post(body)
+                .addHeader("content-type", "application/x-www-form-urlencoded")
+                .build();
+
+        Response response = client.newCall(request).execute();
+
+        System.out.println(response.body().string());
+
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy").withLocale(Locale.ENGLISH);
+
+        LocalDate date = LocalDate.parse("29-02-2019", formatter);
+
+        String plusDate=date.plusDays(7).toString();
+
+        System.out.println("---"+plusDate);
         String format=generateTimeZoneOffset("America/New_York");
-        return ""+ UtcToCgTimeZoneConversion("America/New_York","2023-02-15 04:25:21",true);
+        return ""+ UtcToCgTimeZoneConversion("America/New_York","2023-02-15 07:58:21",true);
     }
     public String UtcToCgTimeZoneConversion(String zone, String date, boolean sigDateFormat) {
 
@@ -103,7 +160,7 @@ public class PostalCodeController {
                     .withZone(ZoneId.of(zone));
             instant = Instant.now();
         } else if (sigDateFormat) {
-            formatter = DateTimeFormatter.ofPattern("MMM,dd yyyy")
+            formatter = DateTimeFormatter.ofPattern("MMM,dd yyyy HH:mm a")
                     .withZone(ZoneId.of(zone));
             instant = Timestamp.valueOf(date).toInstant();
         } else {
