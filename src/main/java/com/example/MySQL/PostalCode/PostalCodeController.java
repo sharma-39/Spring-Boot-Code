@@ -2,6 +2,7 @@ package com.example.MySQL.PostalCode;
 
 
 import okhttp3.*;
+
 import javax.activation.DataHandler;
 import javax.activation.DataSource;
 import javax.mail.Message;
@@ -15,18 +16,27 @@ import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
 import javax.mail.util.ByteArrayDataSource;
+import java.io.*;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 import okhttp3.RequestBody;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.util.CellReference;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.PreparedStatementCreator;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.web.bind.annotation.*;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
+
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.http.HttpClient;
@@ -42,6 +52,7 @@ import java.time.format.TextStyle;
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 
@@ -112,6 +123,345 @@ public class PostalCodeController {
 
         }
         return "TotalSize" + sum;
+    }
+
+    @RequestMapping("/excel")
+    public  String   excelImport() throws IOException {
+
+        List<String> filePathnew=new ArrayList<>();
+        filePathnew.add("D:\\upload1.xlsx");
+        filePathnew.add("D:\\upload.xls");
+
+        for(int j=0;j<filePathnew.size();j++) {
+            // String filePath = "D:\\upload.xls";
+            String filePath = filePathnew.get(j);
+            String sheetName = "Sheet1";
+            String startCell = "A8";
+
+            JsonSetReferenceNumber newRef;
+            HashMap<List<String>, List<List<String>>> finalData = new HashMap<>();
+
+            try {
+
+                FileInputStream file = new FileInputStream(new File(filePath));
+                Workbook workbook = new XSSFWorkbook(file);
+
+                Sheet sheet = workbook.getSheet(sheetName);
+                if (sheet != null) {
+                    CellReference startCellRef = new CellReference(startCell);
+                    int startRow = startCellRef.getRow();
+                    int startCol = startCellRef.getCol();
+                    System.out.println("" + sheet.getLastRowNum());
+
+                    List<Object> names = new ArrayList<Object>();
+                    for (int rowIndex = startRow; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
+
+                        Row row = sheet.getRow(rowIndex);
+                        if (row != null) {
+                            for (int colIndex = startCol; colIndex < row.getLastCellNum(); colIndex++) {
+                                Cell cell = row.getCell(colIndex);
+                                if (cell != null) {
+                                    String cellValue = "";
+//                                switch (cell.getCellType()) {
+//                                    case STRING:
+//                                        cellValue = cell.getStringCellValue();
+//                                        break;
+//                                    case NUMERIC:
+//                                        cellValue = String.valueOf(cell.getNumericCellValue());
+//                                        break;
+//                                    case BOOLEAN:
+//                                        cellValue = String.valueOf(cell.getBooleanCellValue());
+//                                        break;
+//                                        // Add cases for other cell types as neede
+//                                }
+                                    boolean checkDateStart = false;
+                                    boolean flag = false;
+                                    if (cell.getCellType() == CellType.STRING) {
+                                        cellValue = cell.getStringCellValue();
+                                    } else if (cell.getCellType() == CellType.NUMERIC && DateUtil.isCellDateFormatted(cell)) {
+                                        Date date = cell.getDateCellValue();
+                                        //   System.out.println("date "+date);
+
+                                        SimpleDateFormat outputFormat = new SimpleDateFormat("d/MMMM/yyyy");
+                                        String formattedDate = outputFormat.format(date);
+                                        checkDateStart = true;
+                                        cellValue = formattedDate;
+
+                                    } else if (cell.getCellType() == CellType.NUMERIC) {
+                                        cellValue = String.valueOf(cell.getNumericCellValue());
+                                    }
+                                    //   System.out.println("Cell Value: " + cellValue);
+
+                                    if (checkDateStart != true) {
+                                        checkDateStart = checkValidateDate(cellValue);
+                                    }
+                                    if (checkDateStart) {
+                                        names.add("externallink");
+                                        names.add(cellValue);
+
+                                        flag = true;
+                                    } else {
+                                        names.add(cellValue);
+                                    }
+
+                                }
+                            }
+                        }
+                    }
+                    // displayData(names);
+                    finalData = generatedDbData(names);
+
+                }
+
+
+                workbook.close();
+                file.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return "Success Imported";
+    }
+
+    private HashMap<List<String>, List<List<String>>> generatedDbData(List<Object> names) {
+
+
+        HashMap<Object,List<Object>> finalData=new HashMap<>();   List<Object> data=new ArrayList<Object>();
+
+        for(int i=0;i<names.size(); i++) {
+            Boolean nullPointerCheck=names.get(i).toString().equals("");
+            Boolean nullPointerCheck2=names.get(i).toString().equals(" ");
+            Boolean nullPointerCheck3=names.get(i).toString().trim().equals(" ");
+            Boolean nullPointerCheck4=names.get(i).toString().trim().equals("");
+            Boolean nullPointerCheck5=names.get(i).toString().trim().equals(" ,") ;
+            Boolean nullPointerCheck6=names.get(i).toString().trim().equals(", ") ;
+           if(!(nullPointerCheck || nullPointerCheck2 || nullPointerCheck3 || nullPointerCheck4
+                   || nullPointerCheck5 || nullPointerCheck6)
+           )
+            {
+                data.add(names.get(i).toString().trim());
+            }
+        }
+
+
+
+        Map<Integer, List<Object>> hashMap = new HashMap<>();
+
+       // System.out.println(""+);
+        // Split the string into key-value pairs
+        List<String> items= List.of(data.toString().split("externallink"));
+
+        for(int i=0;i<items.size();i++)
+        {
+
+            List<Object> newData= Collections.singletonList(items.get(i));
+            hashMap.put(i,newData);
+        }
+     //   System.out.println("finalData"+hashMap.);
+
+        Map<Integer, List<Object>> hashMap2 = new HashMap<>();
+
+        for (Map.Entry<Integer, List<Object>> entry : hashMap.entrySet()) {
+            int key = entry.getKey();
+            List<Object> value = new ArrayList<>(entry.getValue());
+           // System.out.println("Original List " + key + ": " + value);
+            // Modify the list
+            value.add(value.size(),"finish");
+            value.add(0,"start");
+            hashMap2.put(key, value);
+        }
+
+        // Print the updated hashMap2
+        System.out.println("\nUpdated hashMap2:");
+        HashMap<Integer,List<String>> newFinalData=new HashMap<>();
+        for (Map.Entry<Integer, List<Object>> entry : hashMap2.entrySet()) {
+            int key = entry.getKey();
+            List<Object> value = entry.getValue();
+            List<Object> newData=new ArrayList<>();
+            for(int i=0;i< value.size();i++)
+            {
+             //System.out.println(""+value.get(i));
+             List<String> newData1=new ArrayList<>();
+             newData1.add("start");
+             if(i==1) {
+                 String[] splitText = value.get(1).toString().split(",");
+                 for (int j = 0; j < splitText.length; j++) {
+                   //  System.out.println("\n\n"+splitText[j]);
+                    splitText[j]= splitText[j].replace("]", "");
+                     splitText[j]= splitText[j].replace(", ", "");
+
+                     if(!splitText[j].isEmpty()  || !(splitText[j].equals("]"))) {
+                         newData1.add(splitText[j].trim());
+                     }
+                 }
+                 newData1.removeIf(s -> s == null || s.isEmpty());
+                 newData1.add("end");
+                 newFinalData.put(key,newData1);
+             }
+
+            }
+        }
+        for (Map.Entry<Integer, List<String>> entry : newFinalData.entrySet()) {
+            int key = entry.getKey();
+            List<Object> value = new ArrayList<>(entry.getValue());
+
+            System.out.println("Key"+key+" value "+value);
+        }
+
+
+        HashMap<List<String>, List<List<String>>> hashMapNew = new HashMap<>();
+        System.out.println(""+newFinalData.size());
+        for(int m = 1;m<newFinalData.size(); m++) {
+            List<List<String>> value = new ArrayList<>();
+            List<String> newData2 = new ArrayList<>();
+            List<String> newData3 = new ArrayList<>();
+       //     System.out.println("" + newFinalData.get(m));
+            List<String> sublist1 = newFinalData.get(m).subList(0, 7);
+
+            if (newFinalData.get(m).contains("New Ref")) {
+                boolean checkAlready = false;
+                String startString = "New Ref";
+                String endString = "end";
+                int startIndex = newFinalData.get(m).toString().replace("[", "").replace("]", "").indexOf(startString) + startString.length();
+                int endIndex = newFinalData.get(m).toString().replace("[", "").replace("]", "").indexOf(endString);
+                String extractedString = newFinalData.get(m).toString().replace("[", "").replace("]", "").substring(startIndex, endIndex);
+
+                //System.out.println(extractedString);
+                String[] spinText = extractedString.split(",");
+                newData2.add(startString);
+                for (int l = 0; l < spinText.length; l++) {
+                    newData2.add(spinText[l].trim());
+                }
+            }
+            if (newFinalData.get(m).contains("Agst Ref")) {
+                String startString = "Agst Ref";
+                String endString = "end";
+
+                newData2.add(startString);
+                int startIndex = newFinalData.get(m).toString().replace("[", "").replace("]", "").indexOf(startString) + startString.length();
+                int endIndex = newFinalData.get(m).toString().replace("[", "").replace("]", "").indexOf(endString);
+
+                String extractedString = newFinalData.get(m).toString().replace("[", "").replace("]", "").substring(startIndex, endIndex);
+
+                String[] spinText = extractedString.split(",");
+                for (int l = 0; l < spinText.length; l++) {
+                    newData2.add(spinText[l].trim());
+                }
+
+            }
+
+            newData2.removeIf(s -> s == null || s.isEmpty());
+
+            try {
+                hashMapNew.put(sublist1,generateFinalHashMap(newData2));
+            } catch (Exception e)
+            {
+
+            }
+
+
+
+            // System.out.println(""+newData2);
+          //  System.out.println(""+sublist1);
+
+        }
+        finalDbSaved(hashMapNew);
+       System.out.println(hashMapNew.size());
+
+        return hashMapNew;
+
+    }
+
+    private void finalDbSaved(HashMap<List<String>, List<List<String>>> hashMapNew) {
+
+        System.out.println(hashMapNew.size());
+        for (Map.Entry<List<String>, List<List<String>>> entry : hashMapNew.entrySet()) {
+            List<String>  key = entry.getKey();
+            List<List<String>> value = new ArrayList<>(entry.getValue());
+            System.out.println(""+key);
+            String urlnew="INSERT INTO `newaccess`.`details` (date,vc_type, `particular`, `column_1`, `vc_no`, `credit`) VALUES" +
+                    " ('"+key.get(1)+"', '"+key.get(2)+"', '"+key.get(3)+"', '"+key.get(4)+"','"+key.get(5)+"','"+key.get(6)+"');\n";
+            KeyHolder holder2 = new GeneratedKeyHolder();
+
+            jdbcTemplate.update(new PreparedStatementCreator() {
+                @Override
+                public PreparedStatement createPreparedStatement(java.sql.Connection connection) throws SQLException {
+
+
+                    PreparedStatement ps = connection.prepareStatement(urlnew,
+                            Statement.RETURN_GENERATED_KEYS);
+
+                    return ps;
+                }
+
+            }, holder2);
+
+            for(int m=0;m<value.size();m++)
+            {
+                Integer id= holder2.getKey().intValue();
+
+                String finalUrl="INSERT INTO `newaccess`.`depit_bal` (`details_id`, `ref_type`, `ref_no`,`depit`, `type`) VALUES ('"+id+"', '"+value.get(m).get(0)+"', '"+value.get(m).get(1)+"', '"+value.get(m).get(2)+"', '"+value.get(m).get(3)+"')";
+
+                jdbcTemplate.update(finalUrl);
+
+            }
+
+
+
+        }
+    }
+
+    private List<List<String>> generateFinalHashMap(List<String> newData2) {
+
+       // System.out.println(""+newData2);
+        String value=   newData2.contains("Agst Ref") ? "Agst Ref" : "New Ref";
+
+
+        List<List<String>>  newList = new ArrayList<>();
+        List<String> subList = new ArrayList<>();
+
+        for (String item : newData2) {
+            if (item.equals(value)) {
+                if (!subList.isEmpty()) {
+                    newList.add(subList);
+                    subList = new ArrayList<>();
+                }
+            }
+            subList.add(item);
+        }
+        newList.add(subList);
+
+        // Print the new list
+        for (List<String> list : newList) {
+         //   System.out.println(list);
+        }
+     return newList;
+
+    }
+
+
+
+    private void displayData(List<Object> names) {
+        System.out.println("" + names);
+    }
+
+    private Boolean checkValidateDate(String cellValue) {
+        String inputDate = cellValue;
+        SimpleDateFormat inputFormat = new SimpleDateFormat("d/MMMM/yyyy");
+        SimpleDateFormat outputFormat = new SimpleDateFormat("EEE MMM dd HH:mm:ss zzz yyyy");
+        boolean flag = false;
+       // System.out.println("" + cellValue);
+        try {
+            Date date = inputFormat.parse(inputDate);
+            String formattedDate = outputFormat.format(date);
+            flag = true;
+        } catch (ParseException e) {
+
+            // System.out.println("else part");
+            //e.printStackTrace();
+            flag = false;
+        }
+        return flag;
     }
 
     @RequestMapping("/timezoneConversion")
@@ -335,26 +685,25 @@ public class PostalCodeController {
     }
 
     @PostMapping("/mail-form")
-    public String formMail()
+    public String formMail() {
+        try {
+            Properties props = new Properties();
+            props.put("mail.smtp.auth", "true");
+            props.put("mail.smtp.starttls.enable", "true");
+            props.put("mail.smtp.host", "smtp.gmail.com");
+            props.put("mail.smtp.port", "587");
 
-    {try {
-        Properties props = new Properties();
-        props.put("mail.smtp.auth", "true");
-        props.put("mail.smtp.starttls.enable", "true");
-        props.put("mail.smtp.host", "smtp.gmail.com");
-        props.put("mail.smtp.port", "587");
 
+            Session session = Session.getInstance(props, new javax.mail.Authenticator() {
+                protected PasswordAuthentication getPasswordAuthentication() {
+                    return new PasswordAuthentication("sharmamurugaiyan48@gmail.com", "prfhldyosmnfehjt");
+                }
+            });
+            // System.out.println(""+session.getPasswordAuthentication());
 
-        Session session = Session.getInstance(props, new javax.mail.Authenticator() {
-            protected PasswordAuthentication getPasswordAuthentication() {
-                return new PasswordAuthentication("sharmamurugaiyan48@gmail.com","prfhldyosmnfehjt");
-            }
-        });
-       // System.out.println(""+session.getPasswordAuthentication());
+            MimeBodyPart textBodyPart = new MimeBodyPart();
 
-        MimeBodyPart textBodyPart = new MimeBodyPart();
-
-        String html ="   " +
+            String html = "   " +
 //                " <html>" +
 //                "\n" +
 //                "      <body>" +
@@ -391,57 +740,57 @@ public class PostalCodeController {
 //                "\n</form>" +
 //                "</body>\n" +
 //                "</html>\n";
-                "<html lang=\"en\">\n" +
-                "<head>\n" +
-                "<meta charset=\"utf-8\">\n" +
-                "<title>jQuery AJAX Submit Form</title>\n" +
-                "<script src=\"https://code.jquery.com/jquery-3.5.1.min.js\"></script>\n" +
-                "<script>\n" +
-                "$(document).ready(function(){\n" +
-                "    $(\"form\").on(\"submit\", function(event){\n" +
-                "       ;\n" +
-                " \n" +
-                "        var formValues= $(this).serialize();\n" +
-                "        var actionUrl = $(this).attr(\"action\");\n" +
-                " \n" +
-                "        $.post(actionUrl, formValues, function(data){\n" +
-                "            // Display the returned data in browser\n" +
-                "           alert(\"Success\")\n" +
-                "        });\n" +
-                "    });\n" +
-                "});\n" +
-                "</script>\n" +
-                "</head>\n" +
-                "<body>\n" +
-                "    <form action=\"http://localhost:8080/redirect\" method='POST'>\n" +
-                "        <p>\n" +
-                "            <label>Name:</label>\n" +
-                "            <input type=\"text\" name=\"name\">\n" +
-                "        </p>\n" +
-                "        <p>\n" +
-                "            <label>Gender:</label>\n" +
-                "            <label><input type=\"radio\" value=\"male\" name=\"gender\"> Male</label>\n" +
-                "            <label><input type=\"radio\" value=\"female\" name=\"gender\"> Female</label>\n" +
-                "        </p>\n" +
-                "        <p>\n" +
-                "        <p>\n" +
-                "            <label>Favorite Color:</label>\n" +
-                "            <select name=\"color\">\n" +
-                "                <option>Red</option>\n" +
-                "                <option>Green</option>\n" +
-                "                <option>Blue</option>\n" +
-                "            </select>\n" +
-                "        </p>\n" +
-                "        <p>\n" +
-                "            <label>Comment:</label>\n" +
-                "            <textarea name=\"comment\"></textarea>\n" +
-                "        </p>\n" +
-                "        <input type=\"submit\" value=\"submit\">\n" +
-                "    </form>\n" +
-                "    <div id=\"result\"></div>\n" +
-                "</body>\n" +
-                "</html>";
-             //   "<html>\n" +
+                    "<html lang=\"en\">\n" +
+                    "<head>\n" +
+                    "<meta charset=\"utf-8\">\n" +
+                    "<title>jQuery AJAX Submit Form</title>\n" +
+                    "<script src=\"https://code.jquery.com/jquery-3.5.1.min.js\"></script>\n" +
+                    "<script>\n" +
+                    "$(document).ready(function(){\n" +
+                    "    $(\"form\").on(\"submit\", function(event){\n" +
+                    "       ;\n" +
+                    " \n" +
+                    "        var formValues= $(this).serialize();\n" +
+                    "        var actionUrl = $(this).attr(\"action\");\n" +
+                    " \n" +
+                    "        $.post(actionUrl, formValues, function(data){\n" +
+                    "            // Display the returned data in browser\n" +
+                    "           alert(\"Success\")\n" +
+                    "        });\n" +
+                    "    });\n" +
+                    "});\n" +
+                    "</script>\n" +
+                    "</head>\n" +
+                    "<body>\n" +
+                    "    <form action=\"http://localhost:8080/redirect\" method='POST'>\n" +
+                    "        <p>\n" +
+                    "            <label>Name:</label>\n" +
+                    "            <input type=\"text\" name=\"name\">\n" +
+                    "        </p>\n" +
+                    "        <p>\n" +
+                    "            <label>Gender:</label>\n" +
+                    "            <label><input type=\"radio\" value=\"male\" name=\"gender\"> Male</label>\n" +
+                    "            <label><input type=\"radio\" value=\"female\" name=\"gender\"> Female</label>\n" +
+                    "        </p>\n" +
+                    "        <p>\n" +
+                    "        <p>\n" +
+                    "            <label>Favorite Color:</label>\n" +
+                    "            <select name=\"color\">\n" +
+                    "                <option>Red</option>\n" +
+                    "                <option>Green</option>\n" +
+                    "                <option>Blue</option>\n" +
+                    "            </select>\n" +
+                    "        </p>\n" +
+                    "        <p>\n" +
+                    "            <label>Comment:</label>\n" +
+                    "            <textarea name=\"comment\"></textarea>\n" +
+                    "        </p>\n" +
+                    "        <input type=\"submit\" value=\"submit\">\n" +
+                    "    </form>\n" +
+                    "    <div id=\"result\"></div>\n" +
+                    "</body>\n" +
+                    "</html>";
+            //   "<html>\n" +
 //                "\n" +
 //                "<head>\n" +
 //                "<title>Simple JQuery Post Form to PHP Example</title>\n" +
@@ -594,49 +943,50 @@ public class PostalCodeController {
 //                + "<input type=\"hidden\" name=\"action\" value=\"submit\">"
 //                + "<button type=\"submit\" onclick=\"event.preventDefault(); this.disabled=true; this.form.submit();\">Click me</button>"
 //                + "</form></body></html>";
-                System.out.println(""+html);
+            System.out.println("" + html);
 
-        String content = html;
-        byte[] bytesContent = content.getBytes();
+            String content = html;
+            byte[] bytesContent = content.getBytes();
 
 
-        DataSource dataSourceHtml = new ByteArrayDataSource(bytesContent, "text/html");
-        textBodyPart.setDataHandler(new DataHandler(dataSourceHtml));
+            DataSource dataSourceHtml = new ByteArrayDataSource(bytesContent, "text/html");
+            textBodyPart.setDataHandler(new DataHandler(dataSourceHtml));
 
-        MimeMultipart mimeMultipart = new MimeMultipart();
-        mimeMultipart.addBodyPart(textBodyPart);
+            MimeMultipart mimeMultipart = new MimeMultipart();
+            mimeMultipart.addBodyPart(textBodyPart);
 
-        InternetAddress iaSender = new InternetAddress("sharmamurugaiyan48@gmail.com");
+            InternetAddress iaSender = new InternetAddress("sharmamurugaiyan48@gmail.com");
 
-        // construct the mime message
-        MimeMessage mimeMessage = new MimeMessage(session);
-        mimeMessage.setSender(iaSender);
-        mimeMessage.setSubject("Will check filled form");
+            // construct the mime message
+            MimeMessage mimeMessage = new MimeMessage(session);
+            mimeMessage.setSender(iaSender);
+            mimeMessage.setSubject("Will check filled form");
 
-        mimeMessage.setRecipients(Message.RecipientType.TO, InternetAddress.parse("sharmamurugaiyan@gmail.com"));
+            mimeMessage.setRecipients(Message.RecipientType.TO, InternetAddress.parse("sharmamurugaiyan@gmail.com"));
 
-        mimeMessage.setFrom(new InternetAddress("sharmamurugaiyan48@gmail.com"));
-        mimeMessage.setReplyTo(InternetAddress.parse("sharmamurugaiyan48@gmail.com", false));
-        mimeMessage.setContent(mimeMultipart);
+            mimeMessage.setFrom(new InternetAddress("sharmamurugaiyan48@gmail.com"));
+            mimeMessage.setReplyTo(InternetAddress.parse("sharmamurugaiyan48@gmail.com", false));
+            mimeMessage.setContent(mimeMultipart);
 
-        // send off the email
-        Transport.send(mimeMessage);
+            // send off the email
+            Transport.send(mimeMessage);
 
-    }catch(Exception e) {
-        e.printStackTrace();
-    }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         return "Success";
     }
 
     @PostMapping(value = "/redirect")
     @CrossOrigin(origins = "*", allowedHeaders = "*")
-    public ResponseEntity<String> redirect(@RequestParam Map<String,String> input){
+    public ResponseEntity<String> redirect(@RequestParam Map<String, String> input) {
 
         System.out.println(input);
 
         return new ResponseEntity<String>("It's working...!", HttpStatus.OK);
     }
-//    @PostMapping(value = "/redirect")
+
+    //    @PostMapping(value = "/redirect")
 //    @CrossOrigin(origins = "*", allowedHeaders = "*")
 //    public String getData() {
 //        Map<String, Object> data = new HashMap<>();
@@ -664,16 +1014,6 @@ public class PostalCodeController {
         System.out.println(name + " Copy " + (clonedCount.size() + 1));
         return null;
     }
-
-
-
-
-
-
-
-
-
-
 
 
 }
