@@ -1,6 +1,8 @@
 package com.example.MySQL.PostalCode;
 
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import okhttp3.*;
 
 import javax.activation.DataHandler;
@@ -61,8 +63,28 @@ public class PostalCodeController {
 
     public static final String ACCOUNT_SID = System.getenv("TWILIO_ACCOUNT_SID");
     public static final String AUTH_TOKEN = System.getenv("TWILIO_AUTH_TOKEN");
+
     @Autowired
     JdbcTemplate jdbcTemplate;
+
+    @GetMapping(value = "/getData", produces = "application/hal+json")
+    public ResponseEntity<Object> getDataFrom()
+    {
+
+        String Query = "select  postal_id as postalId,Time_Zone_Abbr as appr,Time_Zone_Offset_from_api as offset,Postal_Code as postalCode  " +
+                "from time_zone_data where Time_Zone_Offset_from_api is not null and Time_Zone_Offset_from_api!=\"\";";
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(Query);
+        ObjectMapper objectMapper = new ObjectMapper();
+        Object json = null;
+        try {
+            json = objectMapper.writeValueAsString(rows);
+        } catch (JsonProcessingException e) {
+            e.printStackTrace();
+            // Handle the exception accordingly
+        }
+
+        return ResponseEntity.ok().body(json);
+    }
 
     public static void fileOverite(String fileName,
                                    String key, String postalCode) {
@@ -125,7 +147,93 @@ public class PostalCodeController {
         return "TotalSize" + sum;
     }
 
-    @RequestMapping("/excel")
+
+    @RequestMapping("/excel-export")
+    public  String   excelExprt() throws IOException {
+        String filePath = "D:\\new.xlsx";
+
+        String query="select d.details_id,  date,particular,vc_type,vc_no,credit,d.column_1 as type,group_concat(dd.ref_no,'splited',dd.ref_type,'splited',dd.depit,'splited',dd.type) as detailsdata from details d \n" +
+                "join depit_bal dd on dd.details_id=d.details_id \n" +
+                "where lower(particular) like lower(\"%KARUR%\")\n" +
+                "group by d.details_id";
+
+
+
+
+
+        try (Workbook workbook = new XSSFWorkbook()) {
+            Sheet sheet = workbook.createSheet("Sheet1");
+
+            // Write data to cells
+            Row headerRow = sheet.createRow(0);
+            headerRow.createCell(0).setCellValue("date");
+            headerRow.createCell(1).setCellValue("particular");
+            headerRow.createCell(2).setCellValue("VcType");
+            headerRow.createCell(3).setCellValue("VcNumber");
+            headerRow.createCell(4).setCellValue("Credit");
+            headerRow.createCell(5).setCellValue("Type");
+            headerRow.createCell(6).setCellValue("details");
+
+
+            List<Map<String, Object>> list=jdbcTemplate.queryForList(query);
+            int previousId=1;
+            for(int i=1;i<list.size();i++)
+            {
+
+                int rowSize=previousId;
+                Map row=list.get(i);
+                Row dataRow = null;
+                if(i==previousId) {
+                     dataRow = sheet.createRow(rowSize);
+                    String date= (String) row.get("date");
+                    String particular= (String) row.get("particular");
+                    String vc_type= (String) row.get("vc_type");
+                    String vc_no= (String) row.get("vc_no");
+                    String credit= (String) row.get("credit");
+                    String type= (String) row.get("type");
+                    dataRow.createCell(0).setCellValue(date);
+                    dataRow.createCell(1).setCellValue(particular);
+                    dataRow.createCell(2).setCellValue(vc_type);
+                    dataRow.createCell(3).setCellValue(vc_no);
+                    dataRow.createCell(4).setCellValue(credit);
+                    dataRow.createCell(5).setCellValue(type);
+                }
+                else
+                {
+                    String detail_data=(String) row.get("detailsdata");
+                    List<String> fieldAssocItem = Stream.of(detail_data.split(",")).map(String::trim)
+                            .collect(Collectors.toList());
+                    for(int m=0;m<fieldAssocItem.size();m++)
+                    {
+                        dataRow = sheet.createRow(rowSize);
+                        List<String> fieldAssocItem1 = Stream.of(detail_data.split("splited")).map(String::trim)
+                                .collect(Collectors.toList());
+                        int len = 6;
+                        for(int n=0;n<fieldAssocItem1.size();n++)
+                        {
+                            dataRow.createCell(len).setCellValue(fieldAssocItem1.get(n));
+                            len++;
+                        }
+                     //   dataRow = sheet.createRow(rowSize);
+                        previousId=fieldAssocItem.size();
+
+                    }
+                }
+
+            }
+
+            // Save the workbook to a file
+            try (FileOutputStream outputStream = new FileOutputStream(filePath)) {
+                workbook.write(outputStream);
+            }
+
+            System.out.println("Excel file created successfully!");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return "export successfully";
+    }
+        @RequestMapping("/excel-import")
     public  String   excelImport() throws IOException {
 
         List<String> filePathnew=new ArrayList<>();
