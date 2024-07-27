@@ -108,9 +108,18 @@ public class ConsentFormController {
         {
             createFormFields(consentForm.getHtmlFields(),consentFormId,consentForm);
         }
+        else {
+            if (consentForm.getDeleteFieldAssocIds() != null && consentForm.getDeleteFieldAssocIds().size() != 0) {
+
+            }
+            updateFields(consentForm.getHtmlFields(),consentFormId,consentForm);
+        }
 
         
         
+    }
+
+    private void updateFields(List<ConsentFormAssoc> htmlFields, Integer consentFormId, ConsentForm consentForm) {
     }
 
     private void createFormFields(List<ConsentFormAssoc> htmlFields, Integer consentFormId, ConsentForm consentForm) {
