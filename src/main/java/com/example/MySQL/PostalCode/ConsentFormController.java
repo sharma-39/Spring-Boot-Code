@@ -33,7 +33,7 @@ public class ConsentFormController {
        List<FieldsVO> fieldsVO =new ArrayList<>();
 
         Map<String, List<Fields>> fieldsList = fieldTypeList.stream()
-                .collect(Collectors.groupingBy(Fields::getFieldType, LinkedHashMap::new, Collectors.toList()));
+                .collect(Collectors.groupingBy(Fields::getType, LinkedHashMap::new, Collectors.toList()));
 
         for (Map.Entry<String, List<Fields>> entry : fieldsList.entrySet()) {
 
