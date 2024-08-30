@@ -80,8 +80,85 @@
             <artifactId>spring-boot</artifactId>
             <version>2.7.8-SNAPSHOT</version>
         </dependency>
+		<dependency>
+			<groupId>org.apache.poi</groupId>
+			<artifactId>poi-ooxml</artifactId>
+			<version>5.2.3</version> <!-- Use the latest version -->
+		</dependency>
+		<!-- Jsoup for HTML manipulation -->
+		<dependency>
+			<groupId>org.jsoup</groupId>
+			<artifactId>jsoup</artifactId>
+			<version>1.16.1</version> <!-- Use the latest version -->
+		</dependency>
+		<!-- Docx4j for DOCX to HTML conversion -->
+<!--		<dependency>-->
+<!--			<groupId>org.docx4j</groupId>-->
+<!--			<artifactId>docx4j</artifactId>-->
+<!--			<version>8.3.0</version> &lt;!&ndash; Use a version available in Maven Central &ndash;&gt;-->
+<!--		</dependency>-->
+		<dependency>
+			<groupId>org.apache.pdfbox</groupId>
+			<artifactId>pdfbox</artifactId>
+			<version>3.0.0</version>
+		</dependency>
 
-    </dependencies>
+		<dependency>
+			<groupId>commons-codec</groupId>
+			<artifactId>commons-codec</artifactId>
+			<version>1.15</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.pdfbox</groupId>
+			<artifactId>pdfbox</artifactId>
+			<version>2.0.24</version>
+		</dependency>
+		<!-- https://mvnrepository.com/artifact/org.docx4j/docx4j-core -->
+		<dependency>
+			<groupId>org.docx4j</groupId>
+			<artifactId>docx4j-core</artifactId>
+			<version>8.0.0</version>
+		</dependency>
+
+<!--		important-->
+		<dependency>
+			<groupId>org.apache.pdfbox</groupId>
+			<artifactId>pdfbox-tools</artifactId>
+			<version>2.0.25</version>
+		</dependency>
+		<dependency>
+			<groupId>net.sf.cssbox</groupId>
+			<artifactId>pdf2dom</artifactId>
+			<version>2.0.1</version>
+		</dependency>
+
+<!--		doc to pdf-->
+		<dependency>
+			<groupId>org.apache.poi</groupId>
+			<artifactId>poi-ooxml</artifactId>
+			<version>5.2.2</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.poi</groupId>
+			<artifactId>poi-ooxml</artifactId>
+			<version>5.2.2</version>
+		</dependency>
+		<dependency>
+			<groupId>com.itextpdf</groupId>
+			<artifactId>itext7-core</artifactId>
+			<version>7.2.5</version>
+		</dependency>
+		<dependency>
+			<groupId>com.itextpdf</groupId>
+			<artifactId>itext7-fonts</artifactId>
+			<version>7.2.5</version>
+		</dependency>
+		<dependency>
+			<groupId>com.itextpdf</groupId>
+			<artifactId>itext7-svg</artifactId>
+			<version>7.2.5</version>
+		</dependency>
+	</dependencies>
 
 	<build>
 		<plugins>
@@ -93,20 +170,8 @@
 	</build>
 	<repositories>
 		<repository>
-			<id>spring-milestones</id>
-			<name>Spring Milestones</name>
-			<url>https://repo.spring.io/milestone</url>
-			<snapshots>
-				<enabled>false</enabled>
-			</snapshots>
-		</repository>
-		<repository>
-			<id>spring-snapshots</id>
-			<name>Spring Snapshots</name>
-			<url>https://repo.spring.io/snapshot</url>
-			<releases>
-				<enabled>false</enabled>
-			</releases>
+			<id>central</id>
+			<url>https://repo1.maven.org/maven2/</url>
 		</repository>
 	</repositories>
 	<pluginRepositories>
