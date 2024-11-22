@@ -6,12 +6,18 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import okhttp3.*;
 
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.springframework.messaging.handler.annotation.Payload;
+import com.example.MySQL.PostalCode.Message;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.docx4j.convert.out.html.AbstractHtmlExporter;
 import org.docx4j.openpackaging.exceptions.Docx4JException;
 import org.docx4j.openpackaging.packages.WordprocessingMLPackage;
 import org.docx4j.convert.out.html.HTMLExporterVisitor;
 import org.docx4j.convert.out.html.HTMLConversionImageHandler;
+
+import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.handler.annotation.SendTo;
 import org.fit.pdfdom.PDFDomTree;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -20,7 +26,7 @@ import org.jsoup.parser.Parser;
 
 import javax.activation.DataHandler;
 import javax.activation.DataSource;
-import javax.mail.Message;
+//import javax.mail.Message;
 import javax.mail.MessagingException;
 import javax.mail.PasswordAuthentication;
 import javax.mail.Session;
@@ -86,6 +92,7 @@ import java.util.stream.StreamSupport;
 @RestController
 public class PostalCodeController {
 
+
     @Autowired
     PrintServiceImp printService;
 
@@ -94,6 +101,12 @@ public class PostalCodeController {
 
     @Autowired
     JdbcTemplate jdbcTemplate;
+    private final SimpMessagingTemplate messagingTemplate;
+
+    public PostalCodeController(SimpMessagingTemplate messagingTemplate) {
+        this.messagingTemplate = messagingTemplate;
+    }
+
 
     @GetMapping(value = "/getData", produces = "application/hal+json")
     public ResponseEntity<Object> getDataFrom() {
@@ -593,11 +606,17 @@ public class PostalCodeController {
 
         try {
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(new URI("https://graph.facebook.com/v13.0/107634205625641/messages"))
-                    .header("Authorization", "Bearer EAAIWg4W2rjQBAHRbt6EWplA9K8GqLAYmk9b9eAS3FkZAZCKiitQhUyU8YKFMySFOp1ex4crEzj8MZBElg5bgdfGpBOUQOaFXvZBunrNwNF4oXspEZBrOgkKgDZBzO0siohgGJ6oOZBN4bv03VBuZCYLyJorN5FgjXWUofHAntlsEVeYMATaiA3sKjPeDlfMBdgCfkiKVq2qfYwZDZD")
+                    .uri(new URI("https://graph.facebook.com/v13.0/488854204308220/messages"))
+                    .header("Authorization", "Bearer EAAdevZCc25uwBOztkQnonHIdZCrYLrlR9MSHSrtgRGETIkg6Os4ex3eZCyCZC3HDEp8H7skSBPywcDUagipjLTWMEYZBaZBD3zSJZBQUzJy253DYb7fKtYOCZBkdqiPugWt7XSv5yEi1vWzCjlLgZCJcRAXq3zkLKlqkClWHgtMAYZC6eHrsRDAu7WnZC2RfZAtyNHWnW2ipbaqPChwfSV6A4nvfIfwNpqkZD")
                     .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString("{ \"messaging_product\": \"whatsapp\", \"recipient_type\": \"individual\", \"to\": \"919791310502\", \"type\": \"template\", \"template\": { \"name\": \"Hi Sharma Murugaiyan\", \"language\": { \"code\": \"en_US\" } } }"))
+                    .POST(HttpRequest.BodyPublishers.ofString("{"
+                            + " \"messaging_product\": \"whatsapp\","
+                            + " \"to\": \"917418103948\","
+                            + " \"type\": \"text\","
+                            + " \"text\": { \"body\": \"Hi\" }"
+                            + " }"))
                     .build();
+
             HttpClient http = HttpClient.newHttpClient();
             HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
             System.out.println(response.body());
@@ -1082,7 +1101,7 @@ public class PostalCodeController {
             mimeMessage.setSender(iaSender);
             mimeMessage.setSubject("Will check filled form");
 
-            mimeMessage.setRecipients(Message.RecipientType.TO, InternetAddress.parse("sharmamurugaiyan@gmail.com"));
+          //  mimeMessage.setRecipients(Message.RecipientType.TO, InternetAddress.parse("sharmamurugaiyan@gmail.com"));
 
             mimeMessage.setFrom(new InternetAddress("sharmamurugaiyan48@gmail.com"));
             mimeMessage.setReplyTo(InternetAddress.parse("sharmamurugaiyan48@gmail.com", false));
@@ -1431,6 +1450,27 @@ public class PostalCodeController {
         }
         return "";
     }
+
+
+
+    @MessageMapping("/send")
+    public void send(@Payload Message message) throws Exception {
+        // Log the received message content
+        System.out.println("Received: " + message.getContent());
+
+        // Send the response to the topic
+        messagingTemplate.convertAndSend("/topic/messages", new Message("Received: " + message.getContent()));
+    }
+
+
+    @GetMapping("/sendNotification")
+    public String sendNotification() {
+        Message message1 =new Message();
+        messagingTemplate.convertAndSend("/topic/messages", new Message("Received:backend  New Notication\t\t"+new Date()  ));
+        return "Notification sent: UI ";
+    }
+
+
 
 
 

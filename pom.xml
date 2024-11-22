@@ -132,6 +132,11 @@
 			<version>2.0.1</version>
 		</dependency>
 
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-websocket</artifactId>
+		</dependency>
+
 <!--		doc to pdf-->
 
 	</dependencies>
@@ -145,6 +150,15 @@
 		</plugins>
 	</build>
 	<repositories>
+		<repository>
+			<id>spring-snapshots</id>
+			<name>Spring Snapshots</name>
+			<url>https://repo.spring.io/snapshot</url>
+			<snapshots>
+				<enabled>true</enabled>
+			</snapshots>
+		</repository>
+
 		<repository>
 			<id>central</id>
 			<url>https://repo1.maven.org/maven2/</url>
