@@ -597,7 +597,7 @@ public class PostalCodeController {
         return flag;
     }
 
-    @RequestMapping("/timezoneConversion")
+    @RequestMapping("/send-whatsapp")
     public String timezoneConversion() throws IOException {
 
 
@@ -606,12 +606,12 @@ public class PostalCodeController {
 
         try {
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(new URI("https://graph.facebook.com/v13.0/488854204308220/messages"))
-                    .header("Authorization", "Bearer EAAdevZCc25uwBOztkQnonHIdZCrYLrlR9MSHSrtgRGETIkg6Os4ex3eZCyCZC3HDEp8H7skSBPywcDUagipjLTWMEYZBaZBD3zSJZBQUzJy253DYb7fKtYOCZBkdqiPugWt7XSv5yEi1vWzCjlLgZCJcRAXq3zkLKlqkClWHgtMAYZC6eHrsRDAu7WnZC2RfZAtyNHWnW2ipbaqPChwfSV6A4nvfIfwNpqkZD")
+                    .uri(new URI("https://graph.facebook.com/v18.0/545153065349016/messages"))
+                    .header("Authorization", "Bearer EAAN40z0ZCChUBO4fNM5ZCa33ueN0NvqPNiqZAF7Y9PhecqDNrgiQG42xcgJgTPtYPlyUBYxBEQ6OezHepZAqJ4ZClSf21iRtZCtG9L31cvf8KGOy2k9gZCWt1vcnPSTPZBnxmtIjulT64dwSE6F2qOX7CPYxolwyMY7If8vH3ZAVPKaH7NqN709Gx2fxKWQr8ZCNTeh1aDxvroKQKrSZBOrbVr7WrWcm9ZAIZAKCpTm3178ew")
                     .header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString("{"
                             + " \"messaging_product\": \"whatsapp\","
-                            + " \"to\": \"917418103948\","
+                            + " \"to\": \"919791310502\","
                             + " \"type\": \"text\","
                             + " \"text\": { \"body\": \"Hi\" }"
                             + " }"))
@@ -624,32 +624,7 @@ public class PostalCodeController {
         } catch (URISyntaxException | IOException | InterruptedException e) {
             e.printStackTrace();
         }
-        OkHttpClient client = new OkHttpClient();
-        okhttp3.RequestBody body = new FormBody.Builder()
-                .add("token", "o7d415viacyz5q6q")
-                .add("to", "9791310502")
-                .add("body", "WhatsApp API on UltraMsg.com works good")
-                .build();
-
-        Request request = new Request.Builder()
-                .url("https://api.ultramsg.com/instance41905/messages/chat")
-                .post(body)
-                .addHeader("content-type", "application/x-www-form-urlencoded")
-                .build();
-
-        Response response = client.newCall(request).execute();
-
-        System.out.println(response.body().string());
-
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy").withLocale(Locale.ENGLISH);
-
-        LocalDate date = LocalDate.parse("29-02-2019", formatter);
-
-        String plusDate = date.plusDays(7).toString();
-
-        System.out.println("---" + plusDate);
-        String format = generateTimeZoneOffset("America/New_York");
-        return "" + UtcToCgTimeZoneConversion("America/New_York", "2023-02-15 07:58:21", true);
+        return "success";
     }
 
     public String UtcToCgTimeZoneConversion(String zone, String date, boolean sigDateFormat) {
@@ -1144,7 +1119,7 @@ public class PostalCodeController {
 //      String delimiter="-";
 //      Pattern pattern = Pattern.compile(delimiter);
 //      splitString.forEach(x-> System.out.print(pattern.splitAsStream(x).collect(Collectors.toList()).get(0))) ;
-        List<String> data1 = Arrays.stream(idName.split("-", 2)).toList();
+        List<String> data1 = Arrays.stream(idName.split("-", 2)).collect(Collectors.toUnmodifiableList());
         System.out.println("Data" + data1.get(0));
         String query = "select concat(id,'@',name) from clone_example where name like 'Condition%' ";
         List<String> clonedCount = jdbcTemplate.queryForList(query.replace("Condition", data1.get(0)), String.class);
